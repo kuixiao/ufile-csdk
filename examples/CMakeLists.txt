@@ -66,3 +66,6 @@ target_link_libraries(async_mput ${DEPEND_LIB} pthread) #link pthread 库
 
 add_executable(file_async_mput file_async_mput.c thpool.c) 
 target_link_libraries(file_async_mput ${DEPEND_LIB} pthread) #link pthread 库
+
+add_executable(dl_file1 dl_file1.c thpool.c) 
+target_link_libraries(dl_file1 ${DEPEND_LIB} pthread) #link pthread 库

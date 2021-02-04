@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 #include "string_util.h"
 #include "auth.h"
 #include "encoding.h"
@@ -108,11 +108,20 @@ http_cleanup(CURL *curl,
 struct ufile_error
 curl_do(CURL *curl){
     struct ufile_error error = NO_ERROR;
+    struct timeval start, end;
+    gettimeofday( &start, NULL );
     CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK) {
         error.code = CURL_ERROR_CODE;
         error.message = curl_easy_strerror(curl_code);
         return error;
+    }
+    gettimeofday( &end, NULL );
+    int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec; 
+    if (timeuse/1000 > 500) {
+        printf("curl_easy_perform: start=%d\n", start);
+        printf("curl_easy_perform: end=%d\n", end);
+        printf("curl_easy_perform: timeuse=%d ms\n", timeuse/1000);
     }
 
     long response_code;
