@@ -17,7 +17,7 @@ void dl_file(void *param){
         return;
     }
     struct ufile_error error;
-    error = ufile_download1("csdk-for-dahua", filepath, fp, NULL);
+    error = ufile_download("csdk-for-dahua", filepath, fp, NULL);
     fclose(fp);
     gettimeofday( &end, NULL );
     int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec; 
@@ -32,10 +32,10 @@ void dl_file(void *param){
 
 int main(int argc, char *argv[]){
     struct ufile_config cfg;
-    cfg.public_key = "iek7dnVdSef48jmWFOrG1IN9LM5MdSevin-2ZSih";
-    cfg.private_key = "aoKXXhKMNQQcAToUpIAuiXyfVOruOZMBHpnBA4mC7YtT_17SijsQo5DX8FEcvM0F";
-    cfg.bucket_host = "api.ucloud.cn";
-    cfg.file_host = "www.internal-vn-sng.ufileos.com";
+    cfg.public_key = getenv("UFILE_PUBLIC_KEY");
+    cfg.private_key = getenv("UFILE_PRIVATE_KEY");
+    cfg.bucket_host = getenv("UFILE_BUCKET_HOST");
+    cfg.file_host = getenv("UFILE_FILE_HOST");
     struct ufile_error error;
     error = ufile_sdk_initialize(cfg, 0);
     if(UFILE_HAS_ERROR(error.code)){
