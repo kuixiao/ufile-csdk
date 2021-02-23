@@ -1,9 +1,9 @@
 #include "../lib/api.h"
 #include <stdio.h>
 #include <stdlib.h>
-// #include <errno.h>
-// #include <string.h>
-// #include "helper.h"
+#include <errno.h>
+#include <string.h>
+#include "helper.h"
 
 const char* bucket_name = "csdk-create-bucket";
 const char* key = "ufile_put_file";

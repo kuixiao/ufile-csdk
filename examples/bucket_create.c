@@ -3,8 +3,8 @@
 #include <stdlib.h>
 
 const char* bucket_name = "new-bucket-csdk";
-const char* region = "tw-tp";
-const char* bucket_type = "public";
+const char* region = "vn-sng";
+const char* bucket_type = "private";
 
 int main(int argc, char *argv[]){
     struct ufile_config cfg;

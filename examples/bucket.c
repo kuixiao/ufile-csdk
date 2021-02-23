@@ -4,6 +4,10 @@
 #include <string.h>
 #include <time.h>
 
+const char* bucket_name = "new-bucket-csdk";
+const char* region = "tw-tp";
+const char* bucket_type = "public";
+
 void randstring(char *out,  size_t length){
     static char charset[] = "abcdefghijklmnopqrstuvwxyz";
     static size_t s_len = sizeof(charset)-1;

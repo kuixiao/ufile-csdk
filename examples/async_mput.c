@@ -5,6 +5,11 @@
 #include <string.h>
 #include "thpool.h" //线程池模块，仅做为测试用，不包含在sdk模块中。
 
+const char* bucket_name = "new-bucket-csdk";
+const char* key_name = "async_mput";
+const char* mime_type = ".txt";
+
+
 struct part_data{
     struct ufile_mutipart_state *state;
     char *buf;
@@ -28,15 +33,16 @@ void upload_task(void *param){
 
 
 int main(int argc, char *argv[]){
-    if(argc < 2){
-        printf("请输入一个文件路径！！！！");
-        exit(1);
+    if (argc < 2) {
+        printf("提供带上传的文件路径.....\n");
+        return;
     }
+
     struct ufile_config cfg;
     cfg.public_key = getenv("UFILE_PUBLIC_KEY");
     cfg.private_key = getenv("UFILE_PRIVATE_KEY");
-    cfg.bucket_host = "api.ucloud.cn";
-    cfg.file_host = "cn-bj.ufileos.com";
+    cfg.bucket_host = getenv("UFILE_BUCKET_HOST");
+    cfg.file_host = getenv("UFILE_FILE_HOST");
 
     printf("正在初始化 SDK ......\n");
     struct ufile_error error;
@@ -49,9 +55,7 @@ int main(int argc, char *argv[]){
 
     printf("调用 (mput)分片 上传文件.....\n");
     struct ufile_mutipart_state state;
-    char key_name[100] = "async_mput_";
-    strcat(key_name, argv[1]);
-    error = ufile_multiple_upload_init(&state, "csdk-create-bucket", key_name, "");
+    error = ufile_multiple_upload_init(&state, bucket_name, key_name, mime_type);
     if(UFILE_HAS_ERROR(error.code)){
         ufile_sdk_cleanup();
         printf("调用 ufile_multiple_upload_init 失败，错误信息为：%d, %s\n", error.code, error.message);
@@ -61,6 +65,10 @@ int main(int argc, char *argv[]){
     threadpool thpool = thpool_init(4); //初始化 4 线程的线程池。
 
     FILE *fp = fopen(argv[1], "rb");
+    if (fp == NULL) {
+        printf("打开文件失败，请确认文件是否存在...");
+        return 1; 
+    }
     int i;
     for(i=0; ; i++){
         struct part_data *part = malloc(sizeof(struct part_data));

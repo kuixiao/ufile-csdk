@@ -3,10 +3,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <pthread.h>
 #include "string_util.h"
 #include "auth.h"
 #include "encoding.h"
 #include "api.h"
+
 
 #define USERAGENT ("UFile CSDK/2.0.0")
 #define HTTP_IS_OK(CODE) ((CODE)/100 == 2)
@@ -99,30 +101,6 @@ void http_cleanup(CURL *curl, struct http_options *opt){
         }
     }
 }
-
-// struct ufile_error curl_do(CURL *curl){
-//     struct ufile_error error = NO_ERROR;
-//     CURLcode curl_code = curl_easy_perform(curl);
-//     if (curl_code != CURLE_OK) {
-//         error.code = CURL_ERROR_CODE;
-//         error.message = curl_easy_strerror(curl_code);
-//         return error;
-//     }
-//     long response_code;
-//     if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code) != CURLE_OK){
-//         error.code = CURL_ERROR_CODE;
-//         error.message = "Get curl response code failed.";
-//         return error;
-//     }
-//     if (!HTTP_IS_OK(response_code)){
-//         error.message = "http is not OK, check the code as HTTP code.";
-//     }
-//     error.code = response_code;
-//     if(error.code == 404){
-//         error.message = "File not found.";
-//     }
-//     return error;
-// }
 
 size_t http_write_cb(char *ptr, size_t size, size_t nmemb, void *user_data) {
     struct http_body *param = (struct http_body *)user_data;
@@ -254,31 +232,49 @@ struct ufile_error check_bucket_key(const char *bucket_name, const char *key){
 }
 
 
+pthread_rwlock_t rwlock;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // 临界区
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct ufile_error curl_do(CURL *curl){
+struct ufile_error curl_do(CURL *curl)
+{
+    static CURLSH* share_handle = NULL;
     if (share_handle == NULL) {
-        init_share_handle()
+        if(pthread_mutex_lock(&mutex) != 0) // 临界区，防止对rwlock和share_handle多次初始化
+        {
+            perror("pthread_mutex_lock");
+            exit(EXIT_FAILURE);
+        }
+        if (share_handle == NULL) {
+            pthread_rwlock_init(&rwlock, NULL); 
+            share_handle = curl_share_init();  // curl 共享句柄：作用是允许curl句柄间共享数据
+            curl_share_setopt(share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS); // 设置需要共享的数据，CURLSHOPT_SHARE表示设置dns缓存共享
+            curl_share_setopt(share_handle, CURLSHOPT_LOCKFUNC, lock_cb);
+            curl_share_setopt(share_handle, CURLSHOPT_UNLOCKFUNC, unlock_cb);  
+        }
+        if(pthread_mutex_unlock(&mutex) != 0)
+        {
+            perror("pthread_mutex_unlock");
+            exit(EXIT_FAILURE);
+        }
     }
     curl_easy_setopt(curl, CURLOPT_SHARE, share_handle);  // CURLOPT_SHARE：表示curl使用share_handle内的数据
 
     struct ufile_error error = NO_ERROR;
-    struct timeval start, end;
-    gettimeofday( &start, NULL );
+    // struct timeval start, end;
+    // gettimeofday( &start, NULL );
     CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK) {
         error.code = CURL_ERROR_CODE;
         error.message = curl_easy_strerror(curl_code);
         return error;
     }
-    gettimeofday( &end, NULL );
-    int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec; 
-    if (timeuse/1000 > 500) {
-        printf("curl_easy_perform: start=%d\n", start);
-        printf("curl_easy_perform: end=%d\n", end);
-        printf("curl_easy_perform: timeuse=%d ms\n", timeuse/1000);
-    }
+    // gettimeofday( &end, NULL );
+    // int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec; 
+    // if (timeuse/1000 > 500) {
+    //     printf("curl_easy_perform: start=%d\n", start);
+    //     printf("curl_easy_perform: end=%d\n", end);
+    //     printf("curl_easy_perform: timeuse=%d ms\n", timeuse/1000);
+    // }
 
     long response_code;
     if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code) != CURLE_OK){
@@ -298,13 +294,11 @@ struct ufile_error curl_do(CURL *curl){
     return error;
 }
 
-pthread_rwlock_t rwlock;
-CURLSH* share_handle = NULL;
-
+// CURLSH* share_handle = NULL;
 void init_share_handle() {
     // 设置dns共享数据
-    pthread_rwlock_init(&rwlock); 
-    share_handle = curl_share_init();  // curl 共享句柄：作用是允许curl句柄间共享数据
+    pthread_rwlock_init(&rwlock, NULL); 
+    CURLSH* share_handle = curl_share_init();  // curl 共享句柄：作用是允许curl句柄间共享数据
     curl_share_setopt(share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS); // 设置需要共享的数据，CURLSHOPT_SHARE表示设置dns缓存共享
     curl_share_setopt(share_handle, CURLSHOPT_LOCKFUNC, lock_cb);
     curl_share_setopt(share_handle, CURLSHOPT_UNLOCKFUNC, unlock_cb);  
