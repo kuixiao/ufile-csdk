@@ -509,9 +509,15 @@ void HMAC_SHA1(unsigned char hmac[HMAC_LEN], const unsigned char *key, int key_l
                const unsigned char *message, int message_len) {
     unsigned char kopad[64], kipad[64];
     int i;
-
+    
+    unsigned char digest[20];
+    SHA1Context context;
     if (key_len > 64) {
-        key_len = 64;
+        SHA1_init(&context);
+        SHA1_update(&context, key, key_len);
+        SHA1_final(digest, &context);
+        strcpy(key, digest);
+        key_len = 20;
     }
 
     for (i = 0; i < key_len; i++) {
@@ -523,10 +529,6 @@ void HMAC_SHA1(unsigned char hmac[HMAC_LEN], const unsigned char *key, int key_l
         kopad[i] = 0 ^ 0x5c;
         kipad[i] = 0 ^ 0x36;
     }
-
-    unsigned char digest[20];
-
-    SHA1Context context;
 
     SHA1_init(&context);
     SHA1_update(&context, kipad, 64);
